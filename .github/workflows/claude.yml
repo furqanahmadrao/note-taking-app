@@ -101,11 +101,8 @@ jobs:
           additional_permissions: |
             actions: read
           
-          # Optional: Custom prompt (uncomment if needed)
-          # prompt: 'Update the pull request description to include a summary of changes.'
-          
-          # Optional: Claude args
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
+          # Allow Claude to use necessary development tools
+          claude_args: '--allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(git:*),Bash(npm:*),Bash(cd:*),Bash(ls:*)"'
 
       - name: Usage Report (Optional)
         if: always()
