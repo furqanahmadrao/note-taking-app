@@ -22,7 +22,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,8 +37,8 @@ jobs:
           # Create router config directory
           mkdir -p $HOME/.claude-code-router
           
-          # Create config file
-          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          # Create config file with actual API key value
+          cat > $HOME/.claude-code-router/config.json << EOF
           {
             "LOG": true,
             "LOG_LEVEL": "info",
@@ -48,7 +48,7 @@ jobs:
               {
                 "name": "openrouter",
                 "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
-                "api_key": "$OPENROUTER_API_KEY",
+                "api_key": "${OPENROUTER_API_KEY}",
                 "models": [
                   "moonshotai/kimi-k2:free"
                 ],
@@ -64,6 +64,8 @@ jobs:
           EOF
           
           echo "✅ Router configured"
+          echo "📝 Config preview (API key redacted):"
+          cat $HOME/.claude-code-router/config.json | sed 's/"api_key": ".*"/"api_key": "<REDACTED>"/'
         shell: bash
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -71,17 +73,21 @@ jobs:
       - name: Start Claude Code Router Service
         run: |
           # Start the router in background
-          nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
+          nohup ~/.bun/bin/bunx @musistudio/claude-code-router@1.0.40 start > /tmp/router.log 2>&1 &
           
           # Wait for service initialization
-          sleep 5
+          echo "⏳ Waiting for router to start..."
+          for i in {1..10}; do
+            if curl -f http://localhost:3456/health 2>/dev/null; then
+              echo "✅ Router service is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Waiting... (attempt $i/10)"
+            sleep 2
+          done
           
-          # Verify service is running
-          if curl -f http://localhost:3456/health 2>/dev/null; then
-            echo "✅ Router service is healthy"
-          else
-            echo "⚠️ Health check failed, but service may still be running"
-          fi
+          echo "⚠️ Router may not be fully ready, checking logs:"
+          tail -n 20 /tmp/router.log 2>/dev/null || echo "No logs available"
         shell: bash
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -90,36 +96,29 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@v1
         env:
-          # Point to local router
           ANTHROPIC_BASE_URL: http://localhost:3456
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
-          # Router handles auth
           anthropic_api_key: "router-managed"
-          
-          # Preserve your additional permissions
-          additional_permissions: |
-            actions: read
-          
-          # Optional: Custom prompt (uncomment if needed)
-          # prompt: 'Update the pull request description to include a summary of changes.'
-          
-          # Optional: Claude args
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
 
-      - name: Usage Report (Optional)
-        if: always()
-        run: |
-          echo "=== Model Usage ==="
-          echo "✅ Using FREE DeepSeek v3.1 model"
-          echo "💰 Cost: $0.00 per request"
-          echo "📊 No usage limits on free tier"
-        continue-on-error: true
-
-      - name: Debug on Failure (Optional)
+      - name: Debug on Failure
         if: failure()
         run: |
           echo "=== Router Logs ==="
-          tail -n 50 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No logs found"
-          echo "=== Service Check ==="
-          ps aux | grep claude-code-router || echo "Router not running"
+          tail -n 100 /tmp/router.log 2>/dev/null || echo "No router logs found"
+          
+          echo ""
+          echo "=== Router Directory Logs ==="
+          tail -n 50 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No directory logs found"
+          
+          echo ""
+          echo "=== Claude Code Router Logs ==="
+          tail -n 50 $HOME/.claude-code-router/claude-code-router.log 2>/dev/null || echo "No application logs found"
+          
+          echo ""
+          echo "=== Process Check ==="
+          ps aux | grep -E "claude-code-router|bunx" || echo "No router processes found"
+          
+          echo ""
+          echo "=== Network Check ==="
+          netstat -tlnp 2>/dev/null | grep 3456 || echo "Port 3456 not listening"
