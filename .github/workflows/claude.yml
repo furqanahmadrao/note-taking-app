@@ -50,7 +50,7 @@ jobs:
                 "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
                 "api_key": "$OPENROUTER_API_KEY",
                 "models": [
-                  "qwen/qwen3-coder:free"
+                  "moonshotai/kimi-k2:free"
                 ],
                 "transformer": {
                   "use": ["openrouter"]
@@ -58,7 +58,7 @@ jobs:
               }
             ],
             "Router": {
-              "default": "openrouter,qwen/qwen3-coder:free"
+              "default": "openrouter,moonshotai/kimi-k2:free"
             }
           }
           EOF
