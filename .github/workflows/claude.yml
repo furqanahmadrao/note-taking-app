@@ -29,7 +29,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Claude Code Router with Free DeepSeek
+      - name: Setup Claude Code Router
         run: |
           # Install bun package manager
           curl -fsSL https://bun.sh/install | bash
@@ -37,7 +37,7 @@ jobs:
           # Create router config directory
           mkdir -p $HOME/.claude-code-router
           
-          # Create config with ONLY free DeepSeek model
+          # Create configration file
           cat << 'EOF' > $HOME/.claude-code-router/config.json
           {
             "LOG": true,
@@ -46,29 +46,29 @@ jobs:
             "API_TIMEOUT_MS": 600000,
             "Providers": [
               {
-                "name": "openrouter",
-                "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
-                "api_key": "$OPENROUTER_API_KEY",
+                "name": "gemini",
+                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+                "api_key": "$GEMINI_API_KEY",
                 "models": [
-                  "deepseek/deepseek-chat-v3.1:free"
+                  "gemini-2.5-flash"
                 ],
                 "transformer": {
-                  "use": ["openrouter"]
+                  "use": ["gemini"]
                 }
               }
             ],
             "Router": {
-              "default": "openrouter,deepseek/deepseek-chat-v3.1:free"
+              "default": "gemini,gemini-2.5-flash"
             }
           }
           EOF
           
-          echo "✅ Router configured with FREE DeepSeek model"
+          echo "✅ Router configured"
         shell: bash
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Start Claude Code Router Service
+      - name: Start Claude Code Router
         run: |
           # Start the router in background
           nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
@@ -78,21 +78,21 @@ jobs:
           
           # Verify service is running
           if curl -f http://localhost:3456/health 2>/dev/null; then
-            echo "✅ Router service is healthy - using FREE DeepSeek model"
+            echo "✅ Router service is healthy"
           else
             echo "⚠️ Health check failed, but service may still be running"
           fi
         shell: bash
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Run Claude Code with Free Model
+      - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         env:
           # Point to local router
           ANTHROPIC_BASE_URL: http://localhost:3456
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           # Router handles auth
           anthropic_api_key: "router-managed"
@@ -111,7 +111,6 @@ jobs:
         if: always()
         run: |
           echo "=== Model Usage ==="
-          echo "✅ Using FREE DeepSeek v3.1 model"
           echo "💰 Cost: $0.00 per request"
           echo "📊 No usage limits on free tier"
         continue-on-error: true
