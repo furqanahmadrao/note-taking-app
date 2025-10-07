@@ -123,51 +123,48 @@ jobs:
           prompt: |
             You are reviewing PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
             
-            **IMPORTANT: You MUST post your review as a comment using `gh pr comment` - this is required!**
+            **CRITICAL: You MUST post your review using gh pr comment - this is REQUIRED!**
             
             ## Step 1: Gather Information
-            1. Run: `gh pr view ${{ github.event.pull_request.number }}` to get PR details
-            2. Run: `gh pr diff ${{ github.event.pull_request.number }}` to see the code changes
-            3. Use Read tool on modified files if you need more context
+            Run these commands:
+            ```bash
+            gh pr view ${{ github.event.pull_request.number }}
+            gh pr diff ${{ github.event.pull_request.number }}
+            ```
             
             ## Step 2: Analyze the Code
             Review for:
-            - **Security**: SQL injection, XSS, authentication/authorization issues
+            - **Security**: Authentication, authorization, SQL injection, XSS
             - **Bugs**: Logic errors, null handling, edge cases
-            - **Best Practices**: Code style, error handling, naming conventions
-            - **Performance**: Inefficient queries, unnecessary operations
-            - **Testing**: Are tests needed? Are they adequate?
+            - **Best Practices**: Error handling, naming, code style
+            - **Performance**: Inefficient queries or operations
             
-            ## Step 3: Write and Post Your Review
-            Create a review following this format:
+            ## Step 3: Create Your Review
+            Write a concise review with this structure:
+            - Overall: Approve/Request Changes/Comment
+            - Critical Issues (if any)
+            - Suggestions (if any)
+            - Good Practices
             
-            ```markdown
-            ## 📋 Code Review
+            ## Step 4: POST THE COMMENT
+            **IMPORTANT**: Use this EXACT format to avoid shell operator issues:
             
-            **Overall:** [Approve ✅ | Request Changes ⚠️ | Comment 💬]
-            
-            ### 🔴 Critical Issues
-            [List critical problems that MUST be fixed, or write "None found"]
-            
-            ### 🟡 Suggestions
-            [List improvements that should be considered, or write "None"]
-            
-            ### ✅ Good Practices
-            [Acknowledge what was done well]
-            
-            ---
-            *Reviewed by Claude Code*
-            ```
-            
-            ## Step 4: POST THE COMMENT (REQUIRED!)
-            **You MUST run this command:**
             ```bash
-            gh pr comment ${{ github.event.pull_request.number }} --body "YOUR_REVIEW_TEXT_HERE"
+            gh pr comment ${{ github.event.pull_request.number }} -b "YOUR_SINGLE_LINE_REVIEW_HERE"
             ```
             
-            Replace YOUR_REVIEW_TEXT_HERE with your actual review. Use proper escaping for multi-line text.
+            **RULES FOR THE COMMENT:**
+            1. Keep it on ONE line (use line breaks as \n)
+            2. Use SINGLE quotes or escape double quotes
+            3. NO heredoc (<<EOF), NO subshells $(), NO backticks
+            4. Keep it concise but complete
             
-            **DO NOT SKIP THIS STEP - The review must be posted as a PR comment!**
+            **Example:**
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} -b "Code Review:\n\nOverall: Request Changes\n\nCritical: Missing auth on endpoint\nSuggestion: Add middleware\nGood: Clean code structure"
+            ```
+            
+            **DO NOT use complex shell syntax - keep it simple!**
 
           # Read-only tools for safe code review (no Edit/Write capabilities)
           claude_args: '--allowed-tools "Glob,Grep,LS,Read,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh search:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git status:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(find:*),Bash(grep:*),Bash(tree:*)"'
