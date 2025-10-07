@@ -24,4 +24,14 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
+router.get('/users', async (req, res) => {
+  try {
+    const users = await db.query('SELECT id, email, created_at FROM users');
+    res.json(users.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
