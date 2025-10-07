@@ -1,0 +1,268 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    # Optional: Only run on specific file changes
+    # paths:
+    #   - "src/**/*.ts"
+    #   - "src/**/*.tsx"
+    #   - "src/**/*.js"
+    #   - "src/**/*.jsx"
+
+jobs:
+  claude-review:
+    # Optional: Filter by PR author
+    # if: |
+    #   github.event.pull_request.user.login == 'external-contributor' ||
+    #   github.event.pull_request.user.login == 'new-developer' ||
+    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better context
+
+      - name: Setup Claude Code Router
+        run: |
+          # Install bun package manager
+          curl -fsSL https://bun.sh/install | bash
+          
+          # Create router config directory
+          mkdir -p $HOME/.claude-code-router
+          
+          # Create configuration file with advanced routing
+          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          {
+            "LOG": true,
+            "LOG_LEVEL": "info",
+            "NON_INTERACTIVE_MODE": true,
+            "API_TIMEOUT_MS": 900000,
+            "Providers": [
+              {
+                "name": "gemini",
+                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+                "api_key": "$GEMINI_API_KEY",
+                "models": [
+                  "gemini-2.5-flash"
+                ],
+                "transformer": {
+                  "use": ["gemini"]
+                }
+              }
+            ],
+            "Router": {
+              "default": "gemini,gemini-2.5-flash"
+            }
+          }
+          EOF
+          
+          echo "✅ Router configured with advanced routing"
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Start Claude Code Router
+        run: |
+          # Start the router in background
+          nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
+          
+          # Wait for service initialization
+          sleep 5
+          
+          # Verify service is running
+          if curl -f http://localhost:3456/health 2>/dev/null; then
+            echo "✅ Router service is healthy"
+          else
+            echo "⚠️ Health check failed, but service may still be running"
+          fi
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Get PR Context
+        id: pr-context
+        run: |
+          # Get PR size and complexity metrics
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | wc -l)
+          LINES_CHANGED=$(git diff --shortstat origin/${{ github.base_ref }}..HEAD | grep -oP '\d+(?= insertion)|\d+(?= deletion)' | awk '{s+=$1} END {print s}')
+          
+          echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+          echo "lines_changed=$LINES_CHANGED" >> $GITHUB_OUTPUT
+          
+          # Determine review depth based on size
+          if [ "$LINES_CHANGED" -gt 1000 ]; then
+            echo "review_depth=comprehensive" >> $GITHUB_OUTPUT
+          elif [ "$LINES_CHANGED" -gt 300 ]; then
+            echo "review_depth=thorough" >> $GITHUB_OUTPUT
+          else
+            echo "review_depth=standard" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📊 PR Stats: $FILES_CHANGED files, ~$LINES_CHANGED lines changed"
+        shell: bash
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          anthropic_api_key: "router-managed"
+          
+          prompt: |
+            # Code Review Task
+            
+            **Repository:** ${{ github.repository }}
+            **PR Number:** #${{ github.event.pull_request.number }}
+            **PR Title:** ${{ github.event.pull_request.title }}
+            **Author:** @${{ github.event.pull_request.user.login }}
+            **Files Changed:** ${{ steps.pr-context.outputs.files_changed }}
+            **Lines Changed:** ~${{ steps.pr-context.outputs.lines_changed }}
+            **Review Depth:** ${{ steps.pr-context.outputs.review_depth }}
+            
+            ## Your Mission
+            
+            Perform a ${{ steps.pr-context.outputs.review_depth }} code review of this pull request. You have access to the full repository and can read any files you need for context.
+            
+            ## Review Process
+            
+            1. **Understand the Changes**
+               - Use `gh pr diff ${{ github.event.pull_request.number }}` to see the diff
+               - Use `gh pr view ${{ github.event.pull_request.number }}` for PR description
+               - Read modified files using the Read tool to understand full context
+               - Check related files using Glob and Grep for dependencies
+            
+            2. **Analyze Code Quality**
+               - **Architecture & Design**: Does this change fit well with existing patterns?
+               - **Code Quality**: Is the code clean, readable, and maintainable?
+               - **Best Practices**: Does it follow language/framework best practices?
+               - **Error Handling**: Are errors properly handled?
+               - **Edge Cases**: Are edge cases considered?
+               - **Performance**: Any performance concerns or optimizations needed?
+               - **Security**: Check for common vulnerabilities (injection, XSS, auth issues, etc.)
+               - **Testing**: Are there adequate tests? Do existing tests need updates?
+               - **Documentation**: Is the code self-documenting? Are comments helpful?
+            
+            3. **Check Repository Standards**
+               - Look for CLAUDE.md, AGENTS.md, CONTRIBUTING.md, or similar files for project-specific guidelines
+               - Ensure naming conventions are consistent
+               - Verify file structure follows project patterns
+            
+            4. **Provide Actionable Feedback**
+               - Use specific examples and line numbers
+               - Explain *why* something should change, not just *what*
+               - Suggest concrete improvements with code examples when helpful
+               - Acknowledge good practices you see
+               - Prioritize issues: 🔴 Critical, 🟡 Important, 🟢 Nice-to-have
+            
+            ## Output Format
+            
+            Structure your review as follows:
+            
+            ```markdown
+            ## 📋 Code Review Summary
+            
+            **Overall Assessment:** [Approve/Request Changes/Comment]
+            
+            **Key Findings:**
+            - [Brief summary of main points]
+            
+            ---
+            
+            ## 🔍 Detailed Analysis
+            
+            ### 🔴 Critical Issues
+            [Issues that must be addressed]
+            
+            ### 🟡 Important Suggestions
+            [Recommendations that should be considered]
+            
+            ### 🟢 Nice-to-Have Improvements
+            [Optional enhancements]
+            
+            ### ✅ Positive Observations
+            [Good practices worth noting]
+            
+            ---
+            
+            ## 🎯 Recommendations
+            
+            [Prioritized list of next steps]
+            ```
+            
+            ## Final Steps
+            
+            After completing your analysis, post your review using:
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --body "$(cat review.md)"
+            ```
+            
+            **Important Notes:**
+            - Be constructive and respectful
+            - Consider this is helping a teammate improve
+            - Balance thoroughness with practicality
+            - If unsure about something, say so
+            - Reference specific files and line numbers when possible
+
+          additional_permissions: |
+            actions: read
+            pull-requests: write
+          
+          # Read-only tools for safe code review (no Edit/Write capabilities)
+          claude_args: '--allowed-tools "Glob,Grep,LS,Read,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh search:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git status:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(find:*),Bash(grep:*),Bash(tree:*)"'
+
+      - name: Add Review Metrics Label
+        if: success()
+        run: |
+          LINES=${{ steps.pr-context.outputs.lines_changed }}
+          if [ "$LINES" -gt 1000 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/XL"
+          elif [ "$LINES" -gt 500 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/L"
+          elif [ "$LINES" -gt 200 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/M"
+          else
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/S"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
+
+      - name: Usage Report
+        if: always()
+        run: |
+          echo "=== Claude Code Review Completed ==="
+          echo "📝 PR: #${{ github.event.pull_request.number }}"
+          echo "📊 Files: ${{ steps.pr-context.outputs.files_changed }}"
+          echo "📏 Lines: ~${{ steps.pr-context.outputs.lines_changed }}"
+          echo "🎯 Depth: ${{ steps.pr-context.outputs.review_depth }}"
+          echo "💰 Cost: $0.00 (Gemini free tier)"
+        continue-on-error: true
+
+      - name: Debug on Failure
+        if: failure()
+        run: |
+          echo "=== Debug Information ==="
+          echo ""
+          echo "=== Router Logs ==="
+          tail -n 100 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No logs found"
+          echo ""
+          echo "=== Service Status ==="
+          ps aux | grep claude-code-router || echo "Router not running"
+          echo ""
+          echo "=== Network Check ==="
+          curl -v http://localhost:3456/health 2>&1 || echo "Health check failed"
+          echo ""
+          echo "=== Environment ==="
+          env | grep -E 'ANTHROPIC|GEMINI|CLAUDE' || echo "No relevant env vars"
