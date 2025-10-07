@@ -21,15 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
+      actions: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Full history for better context
 
       - name: Setup Claude Code Router
         run: |
@@ -50,7 +51,7 @@ jobs:
               {
                 "name": "gemini",
                 "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
-                "api_key": "$GEMINI_API_KEY",
+                "api_key": "$GEMINI_API_KEY_1",
                 "models": [
                   "gemini-2.5-flash"
                 ],
@@ -68,7 +69,7 @@ jobs:
           echo "✅ Router configured"
         shell: bash
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
 
       - name: Start Claude Code Router
         run: |
@@ -86,50 +87,132 @@ jobs:
           fi
         shell: bash
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
+
+      - name: Get PR Context
+        id: pr-context
+        run: |
+          # Get PR size and complexity metrics
+          FILES_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | wc -l)
+          LINES_CHANGED=$(git diff --shortstat origin/${{ github.base_ref }}..HEAD | grep -oP '\d+(?= insertion)|\d+(?= deletion)' | awk '{s+=$1} END {print s}')
+          
+          echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+          echo "lines_changed=$LINES_CHANGED" >> $GITHUB_OUTPUT
+          
+          # Determine review depth based on size
+          if [ "$LINES_CHANGED" -gt 1000 ]; then
+            echo "review_depth=comprehensive" >> $GITHUB_OUTPUT
+          elif [ "$LINES_CHANGED" -gt 300 ]; then
+            echo "review_depth=thorough" >> $GITHUB_OUTPUT
+          else
+            echo "review_depth=standard" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📊 PR Stats: $FILES_CHANGED files, ~$LINES_CHANGED lines changed"
+        shell: bash
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         env:
-          # Point to local router
           ANTHROPIC_BASE_URL: http://localhost:3456
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY_1: ${{ secrets.GEMINI_API_KEY_1 }}
         with:
-          # Router handles auth
           anthropic_api_key: "router-managed"
           
           prompt: |
-            REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            You are reviewing PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            
+            **IMPORTANT: You MUST post your review as a comment using `gh pr comment` - this is required!**
+            
+            ## Step 1: Gather Information
+            1. Run: `gh pr view ${{ github.event.pull_request.number }}` to get PR details
+            2. Run: `gh pr diff ${{ github.event.pull_request.number }}` to see the code changes
+            3. Use Read tool on modified files if you need more context
+            
+            ## Step 2: Analyze the Code
+            Review for:
+            - **Security**: SQL injection, XSS, authentication/authorization issues
+            - **Bugs**: Logic errors, null handling, edge cases
+            - **Best Practices**: Code style, error handling, naming conventions
+            - **Performance**: Inefficient queries, unnecessary operations
+            - **Testing**: Are tests needed? Are they adequate?
+            
+            ## Step 3: Write and Post Your Review
+            Create a review following this format:
+            
+            ```markdown
+            ## 📋 Code Review
+            
+            **Overall:** [Approve ✅ | Request Changes ⚠️ | Comment 💬]
+            
+            ### 🔴 Critical Issues
+            [List critical problems that MUST be fixed, or write "None found"]
+            
+            ### 🟡 Suggestions
+            [List improvements that should be considered, or write "None"]
+            
+            ### ✅ Good Practices
+            [Acknowledge what was done well]
+            
+            ---
+            *Reviewed by Claude Code*
+            ```
+            
+            ## Step 4: POST THE COMMENT (REQUIRED!)
+            **You MUST run this command:**
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --body "YOUR_REVIEW_TEXT_HERE"
+            ```
+            
+            Replace YOUR_REVIEW_TEXT_HERE with your actual review. Use proper escaping for multi-line text.
+            
+            **DO NOT SKIP THIS STEP - The review must be posted as a PR comment!**
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+          # Read-only tools for safe code review (no Edit/Write capabilities)
+          claude_args: '--allowed-tools "Glob,Grep,LS,Read,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh search:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git status:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(find:*),Bash(grep:*),Bash(tree:*)"'
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
-
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
-
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
-      - name: Usage Report (Optional)
-        if: always()
+      - name: Add Review Metrics Label
+        if: success()
         run: |
-          echo "=== Model Usage ==="
-          echo "💰 Cost: $0.00 per request (using Gemini free tier)"
-          echo "📊 No usage limits on free tier"
+          LINES=${{ steps.pr-context.outputs.lines_changed }}
+          if [ "$LINES" -gt 1000 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/XL"
+          elif [ "$LINES" -gt 500 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/L"
+          elif [ "$LINES" -gt 200 ]; then
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/M"
+          else
+            gh pr edit ${{ github.event.pull_request.number }} --add-label "size/S"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
         continue-on-error: true
 
-      - name: Debug on Failure (Optional)
+      - name: Usage Report
+        if: always()
+        run: |
+          echo "=== Claude Code Review Completed ==="
+          echo "📝 PR: #${{ github.event.pull_request.number }}"
+          echo "📊 Files: ${{ steps.pr-context.outputs.files_changed }}"
+          echo "📏 Lines: ~${{ steps.pr-context.outputs.lines_changed }}"
+          echo "🎯 Depth: ${{ steps.pr-context.outputs.review_depth }}"
+          echo "💰 Cost: $0.00 (Gemini free tier)"
+        continue-on-error: true
+
+      - name: Debug on Failure
         if: failure()
         run: |
+          echo "=== Debug Information ==="
+          echo ""
           echo "=== Router Logs ==="
-          tail -n 50 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No logs found"
-          echo "=== Service Check ==="
+          tail -n 100 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No logs found"
+          echo ""
+          echo "=== Service Status ==="
           ps aux | grep claude-code-router || echo "Router not running"
+          echo ""
+          echo "=== Network Check ==="
+          curl -v http://localhost:3456/health 2>&1 || echo "Health check failed"
+          echo ""
+          echo "=== Environment ==="
+          env | grep -E 'ANTHROPIC|GEMINI|CLAUDE' || echo "No relevant env vars"
