@@ -9,8 +9,16 @@ const SALT_ROUNDS = 10;
 // User Signup
 router.post('/signup', async (req, res) => {
   const { email, password } = req.body;
+  // Security: Input validation for email format and password complexity
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
+  }
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
   }
 
   try {
@@ -30,11 +38,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // User Login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
+router.post('/login', async (req, res) => {\n  const { email, password } = req.body;\n  // Security: Input validation for email format\n  const emailRegex = /^[^\s@]+@[^\s@]+\\.[^\s@]+$/;\n  if (!email || !password) {\n    return res.status(400).json({ error: 'Email and password are required' });\n  }\n  if (!emailRegex.test(email)) {\n    return res.status(400).json({ error: 'Invalid email format' });\n  }
 
   try {
     const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
