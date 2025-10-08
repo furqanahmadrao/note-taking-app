@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import io from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
@@ -15,6 +16,51 @@ function Dashboard() {
   const [newNote, setNewNote] = useState({ title: '', content: '', tags: '' });
   const [editingNote, setEditingNote] = useState(null);
   const { token, logout, user } = useAuth();
+  const socket = io(API_URL.replace('/api', ''), {
+    auth: {
+      token: token
+    },
+    autoConnect: false,
+  });
+
+  useEffect(() => {
+    if (token) {
+      socket.connect();
+    }
+
+    socket.on('connect', () => {
+      console.log('Connected to Socket.IO server');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket.IO server');
+    });
+
+    socket.on('note:update', (updatedNote) => {
+      setNotes((prevNotes) =>
+        prevNotes.map((note) => (note.id === updatedNote.id ? updatedNote : note))
+      );
+    });
+
+    socket.on('note:create', (newNote) => {
+      setNotes((prevNotes) => [newNote, ...prevNotes]);
+      fetchTags();
+    });
+
+    socket.on('note:delete', (deletedNoteId) => {
+      setNotes((prevNotes) => prevNotes.filter((note) => note.id !== deletedNoteId));
+      fetchTags();
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('note:update');
+      socket.off('note:create');
+      socket.off('note:delete');
+      socket.disconnect();
+    };
+  }, [token]);
 
   const fetchNotes = async () => {
     if (!token) {
@@ -70,8 +116,9 @@ function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNewNote({ title: '', content: '', tags: '' });
-      fetchNotes();
-      fetchTags();
+      // No need to fetch notes directly, socket.io will handle it
+      // fetchNotes();
+      // fetchTags();
     } catch (err) {
       setError('Failed to create note.');
       console.error(err);
@@ -83,7 +130,8 @@ function Dashboard() {
       await axios.patch(`${API_URL}/notes/${noteId}/pin`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchNotes();
+      // Socket.IO will handle the update
+      // fetchNotes();
     } catch (err) {
       setError('Failed to pin/unpin note.');
       console.error(err);
@@ -95,7 +143,8 @@ function Dashboard() {
       await axios.patch(`${API_URL}/notes/${noteId}/archive`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchNotes();
+      // Socket.IO will handle the update
+      // fetchNotes();
     } catch (err) {
       setError('Failed to archive note.');
       console.error(err);
@@ -107,7 +156,8 @@ function Dashboard() {
       await axios.patch(`${API_URL}/notes/${noteId}/unarchive`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchNotes();
+      // Socket.IO will handle the update
+      // fetchNotes();
     } catch (err) {
       setError('Failed to unarchive note.');
       console.error(err);
@@ -120,7 +170,8 @@ function Dashboard() {
       await axios.delete(`${API_URL}/notes/${noteId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchNotes();
+      // Socket.IO will handle the update
+      // fetchNotes();
     } catch (err) {
       setError('Failed to delete note.');
       console.error(err);
@@ -140,8 +191,9 @@ function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEditingNote(null);
-      fetchNotes();
-      fetchTags();
+      // Socket.IO will handle the update
+      // fetchNotes();
+      // fetchTags();
     } catch (err) {
       setError('Failed to update note.');
       console.error(err);
