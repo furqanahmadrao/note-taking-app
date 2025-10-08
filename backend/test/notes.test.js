@@ -89,7 +89,47 @@ describe('Notes API (Database + Features Tests)', () => {
         .send({ content: 'No title' })
         .expect(400);
 
-      expect(res.body.error).toBeDefined();
+      expect(res.body.error).toBe('Title is required');
+    });
+
+    // Security: Test for title length validation (POST)
+    it('should return 400 if title is too long (POST)', async () => {
+      const res = await request(app)
+        .post('/api/notes')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'a'.repeat(256), content: 'Too long title' })
+        .expect(400);
+      expect(res.body.error).toBe('Title cannot exceed 255 characters');
+    });
+
+    // Security: Test for title length validation (PUT)
+    it('should return 400 if title is too long (PUT)', async () => {
+      const res = await request(app)
+        .put(`/api/notes/${noteId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'a'.repeat(256), content: 'Too long title' })
+        .expect(400);
+      expect(res.body.error).toBe('Title cannot exceed 255 characters');
+    });
+
+    // Security: Test for invalid file_url format (POST)
+    it('should return 400 if file_url has an invalid format (POST)', async () => {
+      const res = await request(app)
+        .post('/api/notes')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Note with bad URL', file_url: 'invalid-url' })
+        .expect(400);
+      expect(res.body.error).toBe('Invalid URL format for file_url');
+    });
+
+    // Security: Test for invalid file_url format (PUT)
+    it('should return 400 if file_url has an invalid format (PUT)', async () => {
+      const res = await request(app)
+        .put(`/api/notes/${noteId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Note with bad URL', file_url: 'invalid-url' })
+        .expect(400);
+      expect(res.body.error).toBe('Invalid URL format for file_url');
     });
   });
 

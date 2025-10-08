@@ -54,9 +54,16 @@ router.get('/', async (req, res) => {
 
 // Create a new note
 router.post('/', async (req, res) => {
+  // Security: Input validation for title length and URL format for file_url
   const { title, content, file_url, tags = [], is_pinned = false } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
+  }
+  if (title.length > 255) {
+    return res.status(400).json({ error: 'Title cannot exceed 255 characters' });
+  }
+  if (file_url && !/^https?:\/\/[^\s/$.?#].[^\s]*$/.test(file_url)) {
+    return res.status(400).json({ error: 'Invalid URL format for file_url' });
   }
 
   try {
@@ -105,8 +112,12 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { title, content, tags, is_pinned } = req.body;
+  // Security: Input validation for title length
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
+  }
+  if (title.length > 255) {
+    return res.status(400).json({ error: 'Title cannot exceed 255 characters' });
   }
 
   try {
