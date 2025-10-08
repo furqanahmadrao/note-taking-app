@@ -7,6 +7,14 @@ const notesRoutes = require('./routes/notes');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const io = require('socket.io')(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    methods: ['GET', 'POST']
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -33,7 +41,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
 }
