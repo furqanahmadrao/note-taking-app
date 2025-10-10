@@ -1,10 +1,11 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useContext } from 'react';
+import useAuthStore from '../store/authStore';
 import jwt_decode from 'jwt-decode';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const { token, login: setToken, logout: clearToken } = useAuthStore();
 
   const login = (newToken) => {
     localStorage.setItem('token', newToken);
@@ -12,8 +13,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
+    clearToken();
   };
 
   const getUser = () => {
