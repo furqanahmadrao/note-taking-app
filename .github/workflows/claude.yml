@@ -1,4 +1,5 @@
 name: Claude Code
+
 on:
   issue_comment:
     types: [created]
@@ -18,16 +19,17 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
+      contents: read
+      pull-requests: read
+      issues: read
       id-token: write
       actions: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Setup Claude Code Router
         run: |
@@ -45,9 +47,7 @@ jobs:
                 "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
                 "api_key": "$GEMINI_API_KEY",
                 "models": ["gemini-2.5-flash"],
-                "transformer": {
-                  "use": ["gemini"]
-                }
+                "transformer": { "use": ["gemini"] }
               }
             ],
             "Router": {
@@ -62,11 +62,11 @@ jobs:
         run: |
           nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
           sleep 5
-          curl -f http://localhost:3456/health 2>/dev/null || echo "⚠️ Health check failed"
+          curl -f http://localhost:3456/health || echo "⚠️ Router health check failed"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Run Claude Code Assistant
+      - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: http://localhost:3456
@@ -74,8 +74,5 @@ jobs:
         with:
           anthropic_api_key: "router-managed"
           additional_permissions: |
-            contents: write
-            pull-requests: write
-            issues: write
             actions: read
-          claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git branch:*),Bash(git checkout:*),Bash(git fetch:*),Bash(gh *),Bash(npm install:*),Bash(npm ci:*),Bash(npm run:*),Bash(npm test:*),Bash(npm start:*),Bash(npm build:*),Bash(npm audit:*),Bash(npx *),Bash(yarn *),Bash(pnpm *),Bash(bun *),Bash(node *),Bash(cd *),Bash(ls *),Bash(pwd *),Bash(cat *),Bash(mkdir *),Bash(mv *),Bash(cp *),Bash(rm *),Bash(find *),Bash(grep *),Bash(echo *),Bash(head *),Bash(tail *),Bash(wc *),Bash(touch *),Bash(tree *)"'
+          claude_args: '--allowedTools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git branch:*),Bash(git checkout:*),Bash(git fetch:*),Bash(npm install:*),Bash(npm ci:*),Bash(npm run:*),Bash(npm test:*),Bash(npm start:*),Bash(npm build:*),Bash(npm audit:*),Bash(cd:*),Bash(ls:*),Bash(pwd:*),Bash(cat:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(find:*),Bash(grep:*),Bash(echo:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(touch:*),Bash(node:*)"'
