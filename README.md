@@ -1,13 +1,19 @@
-# CloudNotes: A Hands-On Azure Learning Project
+# CloudNotes: A Full-Stack Note-Taking Application
 
-Welcome to **CloudNotes**, a complete, production-style sample application designed to help you learn and practice core Azure cloud concepts. This project provides a full-stack application with a React frontend, a Node.js backend, and all the necessary infrastructure-as-code, CI/CD, and documentation to get you started on your Azure journey.
+Welcome to **CloudNotes**, a full-stack web application designed for efficient note-taking. It features user authentication, comprehensive note management with pinning, archiving, tagging, and full-text search. The application is built with a React frontend, a Node.js/Express backend, and uses PostgreSQL for data storage, supporting local development with Docker Compose. While the project concept originally considered Azure services, the current implementation focuses on robust core functionality, with future Azure integration as a potential enhancement.
 
-The primary goal of CloudNotes is not just to provide code, but to offer a structured, hands-on learning path. You will learn by connecting the application components to live Azure services, following our detailed connection guides.
+This project can also serve as a structured, hands-on learning path for cloud concepts, especially with Azure, by connecting application components to live Azure services.
 
 ## Table of Contents
 
 - [Architecture](#architecture)
 - [Features](#features)
+- [Development Commands](#development-commands)
+- [Key Files Structure](#key-files-structure)
+- [Database Schema](#database-schema)
+- [API Endpoints](#api-endpoints)
+- [Development Patterns](#development-patterns)
+- [Testing](#testing)
 - [Local Development Setup](#local-development-setup)
 - [Azure Deployment](#azure-deployment)
 - [Learning Path: 30-Day Connection Plan](#learning-path-30-day-connection-plan)
@@ -17,36 +23,25 @@ The primary goal of CloudNotes is not just to provide code, but to offer a struc
 
 ## Architecture
 
-CloudNotes is built with a modern, scalable architecture that mirrors what you'd find in a real-world cloud-native application.
+CloudNotes is built with a modern architecture, focusing on a scalable and maintainable full-stack application.
 
-- **Frontend**: React + Vite (Single-Page Application)
-- **Backend**: Node.js + Express (REST API with JWT authentication)
-- **Database**: PostgreSQL (designed for Azure Database for PostgreSQL - Flexible Server)
-- **File Storage**: Azure Blob Storage (for note attachments)
-- **Serverless**: Azure Functions (for processing blob uploads, e.g., thumbnail generation)
-- **Containerization**: Docker (for the backend application)
-- **CI/CD**: GitHub Actions (for automated testing and deployment)
-- **Infrastructure-as-Code (IaC)**: Bicep
-- **Secrets Management**: Azure Key Vault with Managed Identities
-- **Monitoring**: Application Insights
-
-![Architecture Diagram](docs/architecture.png) <!-- Placeholder for diagram -->
+- **Frontend**: React 17 + Vite (Single-Page Application) with React Router DOM for navigation, Zustand for state management, and Axios for API communication.
+- **Backend**: Node.js + Express (REST API with JWT authentication), using `pg` library for PostgreSQL interactions.
+- **Database**: PostgreSQL with a comprehensive schema supporting advanced note features.
+- **Containerization**: Docker with Docker Compose for local development setup.
 
 ## Features
 
 ### Core Features
 - **User Authentication**: Secure user signup and login using email/password and JWTs.
 - **Notes Management**: Full CRUD (Create, Read, Update, Delete) operations for notes, tied to individual users.
-- **File Uploads**: Attach files to notes, which are securely stored in Azure Blob Storage.
-- **Serverless Processing**: An Azure Function automatically triggers on file upload to perform background tasks.
 
-### ✨ New Enhanced Features
+### ✨ Enhanced Features
 - **🔍 Full-Text Search**: Search notes by title and content using PostgreSQL's powerful full-text search with automatic stemming and relevance ranking.
 - **🏷️ Tags System**: Organize notes with multiple tags per note. Filter by tag, view all tags, and manage your note categorization.
 - **📌 Pin/Favorite Notes**: Mark important notes to pin them at the top of your list with visual indicators and priority sorting.
 - **🗄️ Archive System**: Soft-delete notes by archiving them. Archived notes are hidden from the main view but can be easily restored.
 - **🎯 Advanced Filtering**: Combine search, tags, pinned status, and archived status for powerful note discovery.
-- **📊 Enhanced Analytics**: Admin endpoint provides detailed statistics including archived, pinned, and tagged note counts.
 
 ### User Interface
 - **Rich Dashboard**: Create and edit notes with inline forms
@@ -56,6 +51,130 @@ CloudNotes is built with a modern, scalable architecture that mirrors what you'd
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 
 For detailed information about features and usage, see the [Features Guide](docs/FEATURES_GUIDE.md).
+
+## Development Commands
+
+This project uses a monorepo structure with `npm` workspaces. All development commands can be run from the root directory.
+
+### Monorepo Commands (from root)
+
+```bash
+npm install:all               # Install dependencies in all workspaces (backend and frontend)
+npm run dev                    # Run frontend and backend concurrently
+npm run dev:backend            # Run only backend development server with nodemon
+npm run dev:frontend           # Run only frontend development server on port 3001
+npm run build:backend         # Build backend for production
+npm run build:frontend        # Build frontend for production
+npm run lint:backend          # Lint backend code with ESLint
+npm run migrate               # Run database migrations (uses backend)
+npm run docker:up             # Start Docker Compose services (backend API and PostgreSQL)
+npm run docker:down           # Stop Docker Compose services
+```
+
+### Backend Development (from `backend/` directory)
+
+```bash
+cd backend
+npm install
+npm run dev          # Start development server with nodemon
+npm test             # Run Jest tests
+npm run lint         # Run ESLint linting
+npm run migrate      # Run database migrations
+```
+
+### Frontend Development (from `frontend/` directory)
+
+```bash
+cd frontend
+npm install
+npm run dev          # Start Vite development server on port 3001
+npm run build        # Build for production
+npm run preview      # Preview production build
+```
+
+## Key Files Structure
+
+- `backend/` - Express.js API server
+  - `src/index.js` - Main server entry point with middleware setup
+  - `src/routes/auth.js` - Authentication endpoints (signup/login)
+  - `src/routes/notes.js` - Notes management endpoints with full CRUD and advanced features
+  - `src/routes/admin.js` - Admin endpoints (not detailed in provided code)
+  - `src/db.js` - PostgreSQL connection pool with query logging
+  - `src/middleware/authenticateToken.js` - JWT authentication middleware
+  - `Dockerfile` - Container configuration for backend
+  - `package.json` - Backend dependencies and scripts
+
+- `frontend/` - React application
+  - `src/main.jsx` - React entry point with routing setup
+  - `src/App.jsx` - Main App component with navigation
+  - `src/pages/Dashboard.jsx` - Main dashboard with comprehensive note management UI
+  - `src/pages/Login.jsx` - Login/signup page
+  - `src/contexts/AuthContext.jsx` - Authentication context for state management
+  - `src/store/authStore.js` - Zustand store for authentication
+  - `vite.config.js` - Vite configuration with proxy to backend
+  - `package.json` - Frontend dependencies and scripts
+
+- `migrations/` - Database schema migrations
+  - `001_init.sql` - Initial schema with users and notes tables
+  - `002_add_features.sql` - Advanced features (pinning, archiving, tags, full-text search)
+- `docker-compose.yml` - Local development with PostgreSQL container
+- `package.json` - Root monorepo configuration with workspace management
+
+## Database Schema
+
+The application uses PostgreSQL with the following key features in the schema:
+- Users table with email, password_hash, and timestamps
+- Notes table with title, content, tags (array), pinning, archiving status, and full-text search vector
+- Foreign key relationship between notes and users
+- Multiple indexes for performance (on user_id, tags, pinned status, archived status, and full-text search)
+
+## API Endpoints
+
+### Authentication (`/api/auth`)
+- `POST /signup` - User registration
+- `POST /login` - User login and JWT token generation
+
+### Notes (`/api/notes`)
+- `GET /` - Get notes with optional filtering (search, tag, archived, pinned)
+- `POST /` - Create a new note
+- `GET /:id` - Get a specific note
+- `PUT /:id` - Update a note
+- `DELETE /:id` - Delete a note
+- `PATCH /:id/pin` - Toggle note pinning
+- `PATCH /:id/archive` - Archive a note
+- `PATCH /:id/unarchive` - Unarchive a note
+- `GET /tags/all` - Get all unique tags for the user
+
+### Health Check
+- `GET /api/health` - Health check endpoint
+
+## Development Patterns
+
+- Use plain `pg` library for database operations (no ORM)
+- JWT authentication with bcrypt for password hashing
+- Environment variables for configuration (dotenv)
+- Express middleware for request processing (cors, helmet, body parsing)
+- PostgreSQL with advanced features (GIN indexes, full-text search, triggers for updated_at)
+- Database migrations using SQL files
+- Frontend state management with Zustand and React Context API
+- Form handling with React hooks (useState, useEffect)
+- Full-text search using PostgreSQL's tsvector and to_tsvector functions
+- Comprehensive note management with pinning, archiving, tagging, and filtering
+
+## Testing
+
+- **Run backend tests:**
+  ```bash
+  cd backend && npm test
+  ```
+- **Run API smoke tests:**
+  ```bash
+  curl http://localhost:3000/api/health
+  ```
+- **Run tests in all workspaces:**
+  ```bash
+  npm run test
+  ```
 
 ## Local Development Setup
 
