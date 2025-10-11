@@ -74,4 +74,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
           anthropic_api_key: "router-managed"
+          additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
+            actions: read
           claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(*)"'
