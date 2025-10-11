@@ -25,7 +25,7 @@ This project can also serve as a structured, hands-on learning path for cloud co
 
 CloudNotes is built with a modern architecture, focusing on a scalable and maintainable full-stack application.
 
-- **Frontend**: React 17 + Vite (Single-Page Application) with React Router DOM for navigation, Zustand for state management, and Axios for API communication.
+- **Frontend**: React 17 + Vite (Single-Page Application) with React Router DOM for navigation, Zustand for state management (especially for authentication), and Axios for API communication.
 - **Backend**: Node.js + Express (REST API with JWT authentication), using `pg` library for PostgreSQL interactions.
 - **Database**: PostgreSQL with a comprehensive schema supporting advanced note features.
 - **Containerization**: Docker with Docker Compose for local development setup.
@@ -98,7 +98,7 @@ npm run preview      # Preview production build
   - `src/index.js` - Main server entry point with middleware setup
   - `src/routes/auth.js` - Authentication endpoints (signup/login)
   - `src/routes/notes.js` - Notes management endpoints with full CRUD and advanced features
-  - `src/routes/admin.js` - Admin endpoints (not detailed in provided code)
+  - `src/routes/admin.js` - Admin endpoints, including user management
   - `src/db.js` - PostgreSQL connection pool with query logging
   - `src/middleware/authenticateToken.js` - JWT authentication middleware
   - `Dockerfile` - Container configuration for backend
@@ -156,7 +156,8 @@ The application uses PostgreSQL with the following key features in the schema:
 - Express middleware for request processing (cors, helmet, body parsing)
 - PostgreSQL with advanced features (GIN indexes, full-text search, triggers for updated_at)
 - Database migrations using SQL files
-- Frontend state management with Zustand and React Context API
+- Frontend state management with Zustand and React Context API, with a transition towards Zustand for more complex global states
+- Real-time communication using Socket.IO for instant updates
 - Form handling with React hooks (useState, useEffect)
 - Full-text search using PostgreSQL's tsvector and to_tsvector functions
 - Comprehensive note management with pinning, archiving, tagging, and filtering
@@ -236,9 +237,9 @@ If you prefer to run the services manually:
     npm run dev
     ```
 
-## Azure Deployment
+## Azure Deployment & CI/CD
 
-Deploying CloudNotes to Azure involves two main steps: provisioning the infrastructure and deploying the application code.
+This section outlines the process for deploying CloudNotes to Azure and setting up Continuous Integration/Continuous Deployment (CI/CD) using GitHub Actions.
 
 ### 1. Provision Azure Resources
 
@@ -263,10 +264,10 @@ For the application to connect to the database and storage, you must store secre
 
 ### 3. Set up CI/CD with GitHub Actions
 
-The repository includes GitHub Actions workflows for CI/CD.
+The repository includes GitHub Actions workflows for CI/CD, enabling automated builds and deployments.
 
--   **CI (`.github/workflows/ci.yml`):** Automatically runs tests on every push to `main`.
--   **CD (`.github/workflows/cd-deploy.yml`):** A manually triggered workflow to build and deploy the backend container to App Service. To use it, you'll need to set up GitHub secrets (`AZURE_CREDENTIALS`, `ACR_USERNAME`, `ACR_PASSWORD`).
+-   **CI (`.github/workflows/ci.yml`):** Automatically runs tests on every push to `main` for both frontend and backend.
+-   **CD (`.github/workflows/cd-deploy.yml`):** A manually triggered workflow to build and deploy the backend container to Azure App Service. This workflow also includes a foundational setup for frontend deployment (e.g., building the frontend assets). To use it, you'll need to set up GitHub secrets (`AZURE_CREDENTIALS`, `ACR_USERNAME`, `ACR_PASSWORD`).
 
 ## Learning Path: 30-Day Connection Plan
 
