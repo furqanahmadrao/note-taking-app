@@ -1,4 +1,5 @@
-name: Claude Code
+name: Claude Code Assistant
+
 on:
   issue_comment:
     types: [created]
@@ -18,67 +19,268 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: write      # Can commit and push (changed from read)
-      pull-requests: write # Can create/update PRs (changed from read)
-      issues: write        # Can manage issues (changed from read)
-      id-token: write      # Required for OIDC authentication (claude[bot] identity)
-      actions: read        # Required for Claude to read CI results on PRs
+      contents: write      # Can commit and push
+      pull-requests: write # Can update PRs
+      issues: write        # Can comment on issues
+      id-token: write
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0  # Full history for context
+          # Don't set token here - let claude-code-action handle it with app token
+
+      - name: Setup Git Configuration
+        run: |
+          git config --global user.name "Claude Assistant"
+          git config --global user.email "claude-bot@github-actions"
+          echo "✅ Git configured for commits"
+
+      - name: Setup Development Environment
+        run: |
+          # Install Node.js (latest LTS)
+          curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+          
+          # Verify installations
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          
+          echo "✅ Development environment ready"
 
       - name: Setup Claude Code Router
         run: |
+          # Install bun package manager
           curl -fsSL https://bun.sh/install | bash
+          
+          # Create router config directory
           mkdir -p $HOME/.claude-code-router
+          
+          # Advanced configuration with multiple models
           cat << 'EOF' > $HOME/.claude-code-router/config.json
           {
             "LOG": true,
             "LOG_LEVEL": "info",
             "NON_INTERACTIVE_MODE": true,
-            "API_TIMEOUT_MS": 600000,
+            "API_TIMEOUT_MS": 900000,
             "Providers": [
               {
                 "name": "gemini",
                 "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
                 "api_key": "$GEMINI_API_KEY",
-                "models": ["gemini-2.5-flash"],
+                "models": [
+                  "gemini-2.5-flash",
+                  "gemini-2.5-pro"
+                ],
                 "transformer": {
                   "use": ["gemini"]
                 }
               }
             ],
             "Router": {
-              "default": "gemini,gemini-2.5-flash"
+              "default": "gemini,gemini-2.5-pro",
+              "background": "gemini,gemini-2.5-flash",
+              "think": "gemini,gemini-2.5-pro",
+              "longContext": "gemini,gemini-2.5-pro",
+              "longContextThreshold": 50000
             }
           }
           EOF
-          echo "✅ Router configured"
+          
+          echo "✅ Router configured with smart model routing"
+        shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Start Claude Code Router
         run: |
+          # Start the router in background
           nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
+          
+          # Wait for service initialization
           sleep 5
+          
+          # Verify service is running
           if curl -f http://localhost:3456/health 2>/dev/null; then
-            echo "✅ Router is healthy"
+            echo "✅ Router service is healthy"
           else
-            echo "⚠️ Health check failed"
+            echo "⚠️ Health check failed, but service may still be running"
           fi
+        shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Run Claude Code
+      - name: Gather Context
+        id: context
+        run: |
+          # Determine context type
+          if [ "${{ github.event_name }}" == "pull_request_review_comment" ] || [ "${{ github.event_name }}" == "pull_request_review" ]; then
+            echo "context_type=pull_request" >> $GITHUB_OUTPUT
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "issue_comment" ]; then
+            if [ -n "${{ github.event.issue.pull_request }}" ]; then
+              echo "context_type=pull_request" >> $GITHUB_OUTPUT
+              echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            else
+              echo "context_type=issue" >> $GITHUB_OUTPUT
+              echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "context_type=issue" >> $GITHUB_OUTPUT
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          fi
+          
+          # Get repository info
+          echo "repo=${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "branch=$(git branch --show-current)" >> $GITHUB_OUTPUT
+          
+          echo "📋 Context gathered successfully"
+
+      - name: Run Claude Code Assistant
         id: claude
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: http://localhost:3456
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          anthropic_api_key: "sk-ant-router-managed-token"
+          anthropic_api_key: "router-managed"
+          
           additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
             actions: read
-          claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(*)"'
+          
+          # Full development capabilities - Claude can do EVERYTHING
+          claude_args: |
+            --allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,
+            mcp__github_comment__update_claude_comment,
+            Bash(git *),
+            Bash(gh *),
+            Bash(npm *),
+            Bash(npx *),
+            Bash(yarn *),
+            Bash(pnpm *),
+            Bash(bun *),
+            Bash(node *),
+            Bash(python *),
+            Bash(pip *),
+            Bash(curl *),
+            Bash(wget *),
+            Bash(docker *),
+            Bash(make *),
+            Bash(cargo *),
+            Bash(go *),
+            Bash(cd *),
+            Bash(ls *),
+            Bash(pwd *),
+            Bash(cat *),
+            Bash(mkdir *),
+            Bash(mv *),
+            Bash(cp *),
+            Bash(rm *),
+            Bash(find *),
+            Bash(grep *),
+            Bash(sed *),
+            Bash(awk *),
+            Bash(echo *),
+            Bash(head *),
+            Bash(tail *),
+            Bash(wc *),
+            Bash(touch *),
+            Bash(chmod *),
+            Bash(tree *),
+            Bash(diff *),
+            Bash(patch *)"
+
+      - name: Auto-commit Changes (if any)
+        if: success()
+        run: |
+          # Check if there are any changes
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "📝 Changes detected, committing..."
+            
+            git add .
+            
+            # Create a descriptive commit message
+            COMMIT_MSG="🤖 Claude: Auto-changes from ${{ steps.context.outputs.context_type }} #${{ steps.context.outputs.number }}"
+            
+            git commit -m "$COMMIT_MSG" -m "Triggered by: @${{ github.actor }}" -m "Context: ${{ github.event_name }}"
+            
+            # Push changes
+            git push origin HEAD
+            
+            echo "✅ Changes committed and pushed"
+            
+            # Comment on PR/Issue about the commit
+            if [ "${{ steps.context.outputs.context_type }}" == "pull_request" ]; then
+              gh pr comment ${{ steps.context.outputs.number }} --body "✅ I've made the requested changes and pushed them. You can review the latest commit."
+            else
+              gh issue comment ${{ steps.context.outputs.number }} --body "✅ I've made the requested changes and pushed them to the repository."
+            fi
+          else
+            echo "ℹ️ No changes to commit"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
+
+      - name: Usage Summary
+        if: always()
+        run: |
+          echo "═══════════════════════════════════════"
+          echo "🤖 Claude Assistant Session Complete"
+          echo "═══════════════════════════════════════"
+          echo "📦 Repository: ${{ steps.context.outputs.repo }}"
+          echo "🔢 Context: ${{ steps.context.outputs.context_type }} #${{ steps.context.outputs.number }}"
+          echo "🌿 Branch: ${{ steps.context.outputs.branch }}"
+          echo "👤 Triggered by: @${{ github.actor }}"
+          echo "💰 Cost: ~$0.00 (Gemini free tier)"
+          echo "═══════════════════════════════════════"
+          
+          # Show git status
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "⚠️ Warning: Uncommitted changes remain"
+            git status --short
+          else
+            echo "✅ Working directory clean"
+          fi
+
+      - name: Debug Information (on failure)
+        if: failure()
+        run: |
+          echo "═══════════════════════════════════════"
+          echo "🔍 Debug Information"
+          echo "═══════════════════════════════════════"
+          
+          echo ""
+          echo "📋 Router Logs (last 100 lines):"
+          tail -n 100 $HOME/.claude-code-router/logs/ccr-*.log 2>/dev/null || echo "No logs found"
+          
+          echo ""
+          echo "🔧 Service Status:"
+          ps aux | grep claude-code-router || echo "Router not running"
+          
+          echo ""
+          echo "🌐 Network Check:"
+          curl -v http://localhost:3456/health 2>&1 || echo "Health check failed"
+          
+          echo ""
+          echo "📁 Working Directory:"
+          pwd
+          ls -la
+          
+          echo ""
+          echo "🔀 Git Status:"
+          git status
+          
+          echo ""
+          echo "🌍 Environment Variables:"
+          env | grep -E 'ANTHROPIC|GEMINI|CLAUDE|NODE|NPM|GIT' | sort || echo "No relevant env vars"
+          
+          echo ""
+          echo "💾 Disk Space:"
+          df -h
+          
+          echo "═══════════════════════════════════════"
