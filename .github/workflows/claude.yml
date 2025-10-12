@@ -19,32 +19,64 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code
-        id: claude
+      - name: Setup Claude Code Router
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          mkdir -p $HOME/.claude-code-router
+          cat << 'EOF' > $HOME/.claude-code-router/config.json
+          {
+            "LOG": true,
+            "LOG_LEVEL": "info",
+            "NON_INTERACTIVE_MODE": true,
+            "API_TIMEOUT_MS": 600000,
+            "Providers": [
+              {
+                "name": "gemini",
+                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+                "api_key": "$GEMINI_API_KEY",
+                "models": ["gemini-2.5-flash"],
+                "transformer": {
+                  "use": ["gemini"]
+                }
+              }
+            ],
+            "Router": {
+              "default": "gemini,gemini-2.5-flash"
+            }
+          }
+          EOF
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Start Claude Code Router
+        run: |
+          nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
+          sleep 5
+          curl -f http://localhost:3456/health 2>/dev/null || echo "⚠️ Health check failed"
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Run Claude Code Assistant
         uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: http://localhost:3456
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
+          anthropic_api_key: "router-managed"
           additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
             actions: read
-
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
-
+          claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(*)"'
