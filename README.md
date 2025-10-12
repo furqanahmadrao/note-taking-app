@@ -16,8 +16,6 @@ This project can also serve as a structured, hands-on learning path for cloud co
 - [Development Patterns](#development-patterns)
 - [Testing](#testing)
 - [Local Development Setup](#local-development-setup)
-- [Azure Deployment](#azure-deployment)
-- [Learning Path: 30-Day Connection Plan](#learning-path-30-day-connection-plan)
 - [Documentation](#documentation)
 - [Security Checklist](#security-checklist)
 - [Cost Control](#cost-control)
@@ -241,37 +239,6 @@ If you prefer to run the services manually:
     npm run dev
     ```
 
-## Azure Deployment & CI/CD
-
-This section outlines the process for deploying CloudNotes to Azure and setting up Continuous Integration/Continuous Deployment (CI/CD) using GitHub Actions.
-
-### 1. Provision Azure Resources
-
-We use Bicep to define our infrastructure as code. The `azure/azcli-setup.sh` script provides a guided way to deploy all the necessary resources.
-
-1.  **Log in to Azure:**
-    ```bash
-    az login
-    ```
-
-2.  **Configure and run the setup script:**
-    - Open `azure/azcli-setup.sh` and fill in the placeholder values at the top of the file.
-    - Run the script:
-      ```bash
-      bash azure/azcli-setup.sh
-      ```
-    This script will create a resource group and deploy all the services defined in `bicep/main.bicep`. It will output the names of your created resources.
-
-### 2. Configure Secrets in Key Vault
-
-For the application to connect to the database and storage, you must store secrets securely in Azure Key Vault. Refer to the `docs/connection-guides/key-vault.md` guide for detailed steps.
-
-### 3. Set up CI/CD with GitHub Actions
-
-The repository includes GitHub Actions workflows for CI/CD, enabling automated builds and deployments.
-
--   **CI (`.github/workflows/ci.yml`):** Automatically runs tests on every push to `main` for both frontend and backend.
--   **CD (`.github/workflows/cd-deploy.yml`):** A manually triggered workflow to build and deploy the backend container to Azure App Service. This workflow also includes a foundational setup for frontend deployment (e.g., building the frontend assets). To use it, you'll need to set up GitHub secrets (`AZURE_CREDENTIALS`, `ACR_USERNAME`, `ACR_PASSWORD`).
 
 ## Learning Path: 30-Day Connection Plan
 
