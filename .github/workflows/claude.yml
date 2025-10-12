@@ -8,6 +8,7 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
+
 jobs:
   claude:
     if: |
@@ -17,11 +18,11 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read
+      contents: write      # Can commit and push (changed from read)
+      pull-requests: write # Can create/update PRs (changed from read)
+      issues: write        # Can manage issues (changed from read)
+      id-token: write      # Required for OIDC authentication (claude[bot] identity)
+      actions: read        # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -54,6 +55,7 @@ jobs:
             }
           }
           EOF
+          echo "✅ Router configured"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -61,18 +63,22 @@ jobs:
         run: |
           nohup ~/.bun/bin/bunx @musistudio/claude-code-router@latest start &
           sleep 5
-          curl -f http://localhost:3456/health 2>/dev/null || echo "⚠️ Health check failed"
+          if curl -f http://localhost:3456/health 2>/dev/null; then
+            echo "✅ Router is healthy"
+          else
+            echo "⚠️ Health check failed"
+          fi
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - name: Run Claude Code Assistant
+      - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         env:
           ANTHROPIC_BASE_URL: http://localhost:3456
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          additional_permissions: |
-          actions: read 
           anthropic_api_key: "sk-ant-router-managed-token"
+          additional_permissions: |
+            actions: read
           claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(*)"'
