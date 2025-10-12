@@ -72,7 +72,7 @@ jobs:
           ANTHROPIC_BASE_URL: http://localhost:3456
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         with:
-          # Important: Pass any string here to satisfy the required parameter
-          # The actual auth is handled by the router
+          additional_permissions: |
+          actions: read 
           anthropic_api_key: "sk-ant-router-managed-token"
           claude_args: '--allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(*)"'
