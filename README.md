@@ -6,6 +6,7 @@ This project can also serve as a structured, hands-on learning path for cloud co
 
 ## Table of Contents
 
+- [Project Overview](#project-overview)
 - [Architecture](#architecture)
 - [Features](#features)
 - [Development Commands](#development-commands)
@@ -21,12 +22,16 @@ This project can also serve as a structured, hands-on learning path for cloud co
 - [Security Checklist](#security-checklist)
 - [Cost Control](#cost-control)
 
+## Project Overview
+
+CloudNotes is a full-stack web application with React frontend and Node.js/Express backend. It provides a note-taking service with user authentication, note management with features like pinning, archiving, tagging, and full-text search. The application uses PostgreSQL for data storage and supports local development with Docker Compose. While the original concept mentioned Azure services, the current implementation focuses on core functionality with potential for future Azure integration.
+
 ## Architecture
 
 CloudNotes is built with a modern architecture, focusing on a scalable and maintainable full-stack application.
 
-- **Frontend**: React 17 + Vite (Single-Page Application) with React Router DOM for navigation, Zustand for state management (especially for authentication), and Axios for API communication.
-- **Backend**: Node.js + Express (REST API with JWT authentication), using `pg` library for PostgreSQL interactions.
+- **Frontend**: React 17 + Vite SPA with React Router DOM for navigation, Zustand with React Context API for authentication, and Axios for API communication.
+- **Backend**: Node.js + Express REST API with JWT authentication, using `pg` library for PostgreSQL interactions.
 - **Database**: PostgreSQL with a comprehensive schema supporting advanced note features.
 - **Containerization**: Docker with Docker Compose for local development setup.
 
@@ -59,15 +64,15 @@ This project uses a monorepo structure with `npm` workspaces. All development co
 ### Monorepo Commands (from root)
 
 ```bash
-npm install:all               # Install dependencies in all workspaces (backend and frontend)
+npm install:all               # Install dependencies in all workspaces
 npm run dev                    # Run frontend and backend concurrently
-npm run dev:backend            # Run only backend development server with nodemon
-npm run dev:frontend           # Run only frontend development server on port 3001
-npm run build:backend         # Build backend for production
-npm run build:frontend        # Build frontend for production
-npm run lint:backend          # Lint backend code with ESLint
+npm run dev:backend            # Run only backend development server
+npm run dev:frontend           # Run only frontend development server
+npm run build:backend         # Build backend
+npm run build:frontend        # Build frontend
+npm run lint:backend          # Lint backend code
 npm run migrate               # Run database migrations (uses backend)
-npm run docker:up             # Start Docker Compose services (backend API and PostgreSQL)
+npm run docker:up             # Start Docker Compose services
 npm run docker:down           # Stop Docker Compose services
 ```
 
@@ -98,7 +103,7 @@ npm run preview      # Preview production build
   - `src/index.js` - Main server entry point with middleware setup
   - `src/routes/auth.js` - Authentication endpoints (signup/login)
   - `src/routes/notes.js` - Notes management endpoints with full CRUD and advanced features
-  - `src/routes/admin.js` - Admin endpoints, including user management
+  - `src/routes/admin.js` - Admin endpoints (not detailed in provided code)
   - `src/db.js` - PostgreSQL connection pool with query logging
   - `src/middleware/authenticateToken.js` - JWT authentication middleware
   - `Dockerfile` - Container configuration for backend
@@ -156,8 +161,7 @@ The application uses PostgreSQL with the following key features in the schema:
 - Express middleware for request processing (cors, helmet, body parsing)
 - PostgreSQL with advanced features (GIN indexes, full-text search, triggers for updated_at)
 - Database migrations using SQL files
-- Frontend state management with Zustand and React Context API, with a transition towards Zustand for more complex global states
-- Real-time communication using Socket.IO for instant updates
+- Frontend state management with Zustand and React Context API
 - Form handling with React hooks (useState, useEffect)
 - Full-text search using PostgreSQL's tsvector and to_tsvector functions
 - Comprehensive note management with pinning, archiving, tagging, and filtering
