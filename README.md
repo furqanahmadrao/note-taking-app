@@ -54,6 +54,10 @@ CloudNotes is built with a modern architecture, focusing on a scalable and maint
 - **Visual Indicators**: Pin icons (📌), tag badges, colored backgrounds for note status
 - **Quick Actions**: One-click pin/unpin, archive/unarchive, edit, and delete
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Form Validation and Error Handling**: Robust input validation and clear error messages for a smooth user experience.
+- **Local Storage for JWT Token**: Securely stores JWT token for persistent user sessions.
+- **Form Validation and Error Handling**: Robust input validation and clear error messages for a smooth user experience.
+- **Local Storage for JWT Token**: Securely stores JWT token for persistent user sessions.
 
 For detailed information about features and usage, see the [Features Guide](docs/FEATURES_GUIDE.md).
 
