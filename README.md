@@ -28,12 +28,13 @@ CloudNotes is a full-stack web application with React frontend and Node.js/Expre
 
 ## Architecture
 
-CloudNotes is built with a modern architecture, focusing on a scalable and maintainable full-stack application.
-
-- **Frontend**: React 17 + Vite SPA with React Router DOM for navigation, Zustand with React Context API for authentication, and Axios for API communication.
-- **Backend**: Node.js + Express REST API with JWT authentication, using `pg` library for PostgreSQL interactions.
-- **Database**: PostgreSQL with a comprehensive schema supporting advanced note features.
-- **Containerization**: Docker with Docker Compose for local development setup.
+- **Frontend**: React 17 + Vite SPA with React Router DOM for navigation
+- **Backend**: Node.js + Express REST API with JWT authentication
+- **Database**: PostgreSQL with comprehensive schema including users, notes with pinning/archiving/tags/full-text search
+- **Authentication**: JWT-based with bcrypt password hashing
+- **Containerization**: Docker with Docker Compose for local development
+- **Frontend State Management**: Zustand with React Context API for authentication
+- **Frontend HTTP Client**: Axios for API communication
 
 ## Features
 
@@ -169,6 +170,20 @@ The application uses PostgreSQL with the following key features in the schema:
 - Form handling with React hooks (useState, useEffect)
 - Full-text search using PostgreSQL's tsvector and to_tsvector functions
 - Comprehensive note management with pinning, archiving, tagging, and filtering
+
+## Frontend Features
+
+- User authentication (login/signup)
+- Dashboard with comprehensive note management
+- Create, read, update, and delete notes
+- Pin/unpin notes for prioritization
+- Archive/unarchive notes (soft delete)
+- Tag notes with multiple tags
+- Search notes by title/content
+- Filter notes by tag, pinned status, and archived status
+- Responsive UI with React components
+- Form validation and error handling
+- Local storage for JWT token persistence
 
 ## Testing
 
