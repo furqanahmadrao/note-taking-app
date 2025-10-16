@@ -75,4 +75,5 @@ jobs:
           anthropic_api_key: "router-managed"
           additional_permissions: |
             actions: read
-            
+             claude_args: |
+               --allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git branch:*),Bash(git checkout:*),Bash(git fetch:*),Bash(gh *),Bash(npm install:*),Bash(npm ci:*),Bash(npm run:*),Bash(npm test:*),Bash(npm start:*),Bash(npm build:*),Bash(npm audit:*),Bash(npx *),Bash(yarn *),Bash(pnpm *),Bash(bun *),Bash(node *),Bash(cd *),Bash(ls *),Bash(pwd *),Bash(cat *),Bash(mkdir *),Bash(mv *),Bash(cp *),Bash(rm *),Bash(find *),Bash(grep *),Bash(echo *),Bash(head *),Bash(tail *),Bash(wc *),Bash(touch *),Bash(tree *)"
