@@ -41,7 +41,7 @@ jobs:
             "API_TIMEOUT_MS": 600000,
             "Providers": [
               {
-                "name": "gemini",
+                "name": "openrouter",
                 "api_base_url": "https://openrouter.ai/api/v1",
                 "api_key": "$GEMINI_API_KEY",
                 "models": ["andromeda-alpha"],
