@@ -42,16 +42,16 @@ jobs:
             "Providers": [
               {
                 "name": "gemini",
-                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
+                "api_base_url": "https://openrouter.ai/api/v1",
                 "api_key": "$GEMINI_API_KEY",
-                "models": ["gemini-2.5-flash"],
+                "models": ["andromeda-alpha"],
                 "transformer": {
-                  "use": ["gemini"]
+                  "use": ["openrouter"]
                 }
               }
             ],
             "Router": {
-              "default": "gemini,gemini-2.5-flash"
+              "default": "openrouter,openrouter/andromeda-alpha"
             }
           }
           EOF
