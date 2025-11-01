@@ -1,4 +1,5 @@
 name: Claude Code
+
 on:
   issue_comment:
     types: [created]
@@ -41,17 +42,17 @@ jobs:
             "API_TIMEOUT_MS": 600000,
             "Providers": [
               {
-                "name": "openrouter",
-                "api_base_url": "https://openrouter.ai/api/v1/chat/completions",
+                "name": "gemini",
+                "api_base_url": "https://generativelanguage.googleapis.com/v1beta/models/",
                 "api_key": "$GEMINI_API_KEY",
-                "models": ["andromeda-alpha"],
+                "models": ["gemini-2.5-flash"],
                 "transformer": {
-                  "use": ["openrouter"]
+                  "use": ["gemini"]
                 }
               }
             ],
             "Router": {
-              "default": "openrouter,openrouter/andromeda-alpha"
+              "default": "gemini,gemini-2.5-flash"
             }
           }
           EOF
@@ -75,5 +76,51 @@ jobs:
           anthropic_api_key: "router-managed"
           additional_permissions: |
             actions: read
-             claude_args: |
-               --allowed-tools "Edit,MultiEdit,Glob,Grep,LS,Read,Write,mcp__github_comment__update_claude_comment,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git branch:*),Bash(git checkout:*),Bash(git fetch:*),Bash(gh *),Bash(npm install:*),Bash(npm ci:*),Bash(npm run:*),Bash(npm test:*),Bash(npm start:*),Bash(npm build:*),Bash(npm audit:*),Bash(npx *),Bash(yarn *),Bash(pnpm *),Bash(bun *),Bash(node *),Bash(cd *),Bash(ls *),Bash(pwd *),Bash(cat *),Bash(mkdir *),Bash(mv *),Bash(cp *),Bash(rm *),Bash(find *),Bash(grep *),Bash(echo *),Bash(head *),Bash(tail *),Bash(wc *),Bash(touch *),Bash(tree *)"
+          allowed_tools: |
+            Edit
+            MultiEdit
+            Glob
+            Grep
+            LS
+            Read
+            Write
+            mcp__github_comment__update_claude_comment
+            Bash(git add:*)
+            Bash(git commit:*)
+            Bash(git push:*)
+            Bash(git status:*)
+            Bash(git diff:*)
+            Bash(git log:*)
+            Bash(git show:*)
+            Bash(git branch:*)
+            Bash(git checkout:*)
+            Bash(git fetch:*)
+            Bash(gh *)
+            Bash(npm install:*)
+            Bash(npm ci:*)
+            Bash(npm run:*)
+            Bash(npm test:*)
+            Bash(npm start:*)
+            Bash(npm build:*)
+            Bash(npm audit:*)
+            Bash(npx *)
+            Bash(yarn *)
+            Bash(pnpm *)
+            Bash(bun *)
+            Bash(node *)
+            Bash(cd *)
+            Bash(ls *)
+            Bash(pwd *)
+            Bash(cat *)
+            Bash(mkdir *)
+            Bash(mv *)
+            Bash(cp *)
+            Bash(rm *)
+            Bash(find *)
+            Bash(grep *)
+            Bash(echo *)
+            Bash(head *)
+            Bash(tail *)
+            Bash(wc *)
+            Bash(touch *)
+            Bash(tree *)
