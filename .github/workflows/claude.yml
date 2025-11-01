@@ -19,9 +19,9 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read
     steps:
@@ -76,51 +76,125 @@ jobs:
           anthropic_api_key: "router-managed"
           additional_permissions: |
             actions: read
+            contents: write
+            pull-requests: write
+            issues: write
           allowed_tools: |
-            Edit
-            MultiEdit
-            Glob
-            Grep
-            LS
+            # Core file operations
             Read
             Write
+            Edit
+            MultiEdit
+            
+            # Code navigation and search
+            Search
+            Grep
+            Glob
+            LS
+            
+            # GitHub integration
             mcp__github_comment__update_claude_comment
-            Bash(git add:*)
-            Bash(git commit:*)
-            Bash(git push:*)
-            Bash(git status:*)
-            Bash(git diff:*)
-            Bash(git log:*)
-            Bash(git show:*)
-            Bash(git branch:*)
-            Bash(git checkout:*)
-            Bash(git fetch:*)
+            
+            # Git operations - comprehensive but safe
+            Bash(git status)
+            Bash(git diff *)
+            Bash(git log *)
+            Bash(git show *)
+            Bash(git branch *)
+            Bash(git checkout *)
+            Bash(git fetch *)
+            Bash(git pull *)
+            Bash(git add *)
+            Bash(git commit *)
+            Bash(git push *)
+            Bash(git reset --soft *)
+            Bash(git stash *)
+            Bash(git stash pop)
             Bash(gh *)
-            Bash(npm install:*)
-            Bash(npm ci:*)
-            Bash(npm run:*)
-            Bash(npm test:*)
-            Bash(npm start:*)
-            Bash(npm build:*)
-            Bash(npm audit:*)
-            Bash(npx *)
-            Bash(yarn *)
-            Bash(pnpm *)
-            Bash(bun *)
-            Bash(node *)
-            Bash(cd *)
+            
+            # Node.js/npm operations
+            Bash(npm install)
+            Bash(npm ci)
+            Bash(npm run *)
+            Bash(npm test *)
+            Bash(npm run test *)
+            Bash(npm start)
+            Bash(npm run build)
+            Bash(npm run dev)
+            Bash(npm audit)
+            Bash(npm audit fix)
+            Bash(npx eslint *)
+            Bash(npx prettier *)
+            Bash(npx tsc *)
+            Bash(npx jest *)
+            Bash(yarn install)
+            Bash(yarn run *)
+            Bash(yarn test)
+            Bash(pnpm install)
+            Bash(pnpm run *)
+            Bash(pnpm test)
+            Bash(bun install)
+            Bash(bun run *)
+            Bash(bun test)
+            
+            # Python operations (if needed)
+            Bash(pip install *)
+            Bash(pip freeze)
+            Bash(python *)
+            Bash(pytest *)
+            Bash(python -m *)
+            
+            # Safe file system operations
             Bash(ls *)
-            Bash(pwd *)
+            Bash(pwd)
             Bash(cat *)
-            Bash(mkdir *)
-            Bash(mv *)
-            Bash(cp *)
-            Bash(rm *)
-            Bash(find *)
-            Bash(grep *)
-            Bash(echo *)
             Bash(head *)
             Bash(tail *)
             Bash(wc *)
-            Bash(touch *)
+            Bash(find *)
+            Bash(grep *)
+            Bash(echo *)
             Bash(tree *)
+            Bash(which *)
+            Bash(whereis *)
+            
+            # Directory operations - safe patterns
+            Bash(cd *)
+            Bash(mkdir -p *)
+            Bash(touch *)
+            
+            # Dangerous operations - only specific safe patterns
+            Bash(rm -rf node_modules)
+            
+            Bash(rm -rf dist)
+            Bash(rm -rf build)
+            Bash(rm -rf .next)
+            Bash(rm -rf coverage)
+            Bash(rm package-lock.json)
+
+          instructions: |
+            You are Claude, an AI assistant created by Anthropic, working as a coding assistant in a GitHub Actions environment.
+            
+            Key Guidelines:
+            1. **Identity**: Always identify yourself as Claude when interacting with users
+            2. **Communication**: Provide clear, detailed explanations of changes you make
+            3. **Testing**: Run tests before committing changes when applicable
+            4. **Commits**: Write clear, conventional commit messages
+            5. **Safety**: Never delete important files without explicit confirmation
+            6. **Dependencies**: Check package.json/requirements.txt before installing new packages
+            7. **Error Handling**: If a command fails, explain why and suggest alternatives
+            8. **Code Quality**: Follow existing code style and conventions
+            9. **Documentation**: Update relevant docs when changing functionality
+            10. **Collaboration**: Ask clarifying questions when requirements are ambiguous
+
+            For large features:
+            - Break work into logical commits
+            - Test incrementally
+            - Document as you go
+            - Consider edge cases
+
+            For bug fixes:
+            - Reproduce the issue first
+            - Identify root cause
+            - Fix with minimal changes
+            - Add tests to prevent regression
