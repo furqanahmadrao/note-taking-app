@@ -1,6 +1,6 @@
 # CloudNotes: A Full-Stack Note-Taking Application
 
-Welcome to **CloudNotes**, a full-stack web application designed for efficient note-taking. It features user authentication, comprehensive note management with pinning, archiving, tagging, and full-text search. The application is built with a React frontend, a Node.js/Express backend, and uses PostgreSQL for data storage, supporting local development with Docker Compose. While the project concept originally considered Azure services, the current implementation focuses on robust core functionality, with future Azure integration as a potential enhancement.
+Welcome to **CloudNotes**, a full-stack web application designed for efficient note-taking. It features user authentication, comprehensive note management with pinning, archiving, tagging, and full-text search. The application is built with a React frontend, a Node.js/Express backend, and uses PostgreSQL for data storage, supporting local development with Docker Compose. While the project concept originally considered Azure services, the current implementation focuses on robust core functionality, with potential for future Azure integration.
 
 This project can also serve as a structured, hands-on learning path for cloud concepts, especially with Azure, by connecting application components to live Azure services.
 
@@ -17,6 +17,9 @@ CloudNotes is built with a modern architecture, focusing on a scalable and maint
 - **Backend**: Node.js + Express REST API with JWT authentication, using `pg` library for PostgreSQL interactions.
 - **Database**: PostgreSQL with a comprehensive schema supporting advanced note features.
 - **Containerization**: Docker with Docker Compose for local development setup.
+- **Authentication**: JWT-based with bcrypt password hashing.
+- **Frontend State Management**: Zustand with React Context API for authentication.
+- **Frontend HTTP Client**: Axios for API communication.
 
 ## Features
 
@@ -169,20 +172,28 @@ The application uses PostgreSQL with the following key features in the schema:
 - Full-text search using PostgreSQL's tsvector and to_tsvector functions
 - Comprehensive note management with pinning, archiving, tagging, and filtering
 
-## Testing
+## Frontend Features
 
-- **Run backend tests:**
-  ```bash
-  cd backend && npm test
-  ```
-- **Run API smoke tests:**
-  ```bash
-  curl http://localhost:3000/api/health
-  ```
-- **Run tests in all workspaces:**
-  ```bash
-  npm run test
-  ```
+- User authentication (login/signup)
+- Dashboard with comprehensive note management
+- Create, read, update, and delete notes
+- Pin/unpin notes for prioritization
+- Archive/unarchive notes (soft delete)
+- Tag notes with multiple tags
+- Search notes by title/content
+- Filter notes by tag, pinned status, and archived status
+- Responsive UI with React components
+- Form validation and error handling
+- Local storage for JWT token persistence
+
+## Database Advanced Features
+
+- Full-text search using PostgreSQL's tsvector for efficient search in titles and content
+- Array column for tags with GIN indexing for fast tag-based queries
+- Row-level security via user_id foreign key ensuring users only access their own notes
+- Trigger-based updated_at timestamp management
+- Archive functionality instead of hard deletes for data recovery
+- Indexes on frequently queried columns (user_id, tags, pinned, archived) for performance
 
 ## Local Development Setup
 
@@ -243,8 +254,6 @@ If you prefer to run the services manually:
     npm install
     npm run dev
     ```
-
-
 
 ## Documentation
 
