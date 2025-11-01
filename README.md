@@ -4,21 +4,6 @@ Welcome to **CloudNotes**, a full-stack web application designed for efficient n
 
 This project can also serve as a structured, hands-on learning path for cloud concepts, especially with Azure, by connecting application components to live Azure services.
 
-## Table of Contents
-
-- [Project Overview](#project-overview)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Development Commands](#development-commands)
-- [Key Files Structure](#key-files-structure)
-- [Database Schema](#database-schema)
-- [API Endpoints](#api-endpoints)
-- [Development Patterns](#development-patterns)
-- [Testing](#testing)
-- [Local Development Setup](#local-development-setup)
-- [Documentation](#documentation)
-- [Security Checklist](#security-checklist)
-- [Cost Control](#cost-control)
 
 ## Project Overview
 
